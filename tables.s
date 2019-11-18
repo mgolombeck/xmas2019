@@ -226,6 +226,7 @@ TREE1		HEX	0E					; 10 lines of green
 			HEX 000004				; trunk of the tree in orange
 
 FOREST1		DFB	8					; number of trees in the forest
+			DFB	79,145
 			DFB	105,134				; xoffset, yoffset of the tree
 			DFB	121,133
 			DFB	133,132
@@ -233,12 +234,11 @@ FOREST1		DFB	8					; number of trees in the forest
 			DFB	161,139
 			DFB	179,148
 			DFB	197,147
-			DFB	79,145
 
 T_SHACK		ASC "8-Bit-Shack"
 T_SHACKa	HEX	00
-T_SELECT	ASC	"Limit snowflakes (Y/N)? "
-			HEX	00		
+T_SELECT	ASC	"Enable all features (Y/N)? "
+			HEX	00	
 T_LOAD		ASC	"Loading demo data..."
 			HEX	00		
 T_OPT1		ASC	"Options:"

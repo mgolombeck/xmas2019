@@ -326,7 +326,7 @@ STARTTEXT
 				JSR	printCHAR
 				JSR	LOADSHACK		; load 8-bit-shack logo
 				JSR	LOADLOGO
-				LDA	#9
+				LDA	#7
 				STA	$24
 				LDA	#10
 				STA	$25
@@ -337,10 +337,11 @@ STARTTEXT
 				LDA	#$FF
 				STA	LIMIT			; unlimited flakes
 				JSR	RDKEY			; press a key
-				CMP	#$D9			; "Y"?
-				BEQ	doLIMIT
-				CMP	#$F9
-				BNE	noLIMIT
+				;always limit number of snowflakes!
+				;CMP	#$D9			; "Y"?
+				;BEQ	doLIMIT
+				;CMP	#$F9
+				;BNE	noLIMIT
 doLIMIT			INC	LIMIT			; limit number of snowflakes		
 noLIMIT			RTS
 		

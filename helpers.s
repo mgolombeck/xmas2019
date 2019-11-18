@@ -19,12 +19,13 @@ wlp				STA	(HBASL),Y
 ;
 ; draw Hill
 ;
-DRAWHILL
+DRAWHILL		JSR	RNDGEN			; try a littlew randomness
+				TAX
 				LDA	#$20
 				STA	$E6
-				LDX	#0
-				STX	XPOSH
-				STX	DRPOS
+				LDA	#0
+				STA	XPOSH
+				STA	DRPOS
 sm1				INX
 hllp			LDA	SINTAB,X
 				BPL	gotplus
@@ -43,7 +44,7 @@ gotplus			LSR
 				PHA
 				ASL
 				CLC
-				ADC	YPOS ; generate new X
+				ADC	YPOS 			; generate new X
 				TAX
 				
 				LDA	COSTAB,X
@@ -61,13 +62,51 @@ gotplus2		LSR
 				ADC	YPOS
 				STA	YPOS
 				LDA	DRPOS
-				;STA	XPOSL
 				CLC	
 				ADC #14				; shift 14 pixel to the right for centering
 				STA XPOSL
 				LDA	#0
 				ADC	#0
 				STA	XPOSH			; set HI byte for x-coord > 255
+				
+				LDY	YPOS
+				LDA	XPOSL			; calc new Y for trees
+				CLC
+				ADC	#1				; offset correction! Trees are always in odd columns!
+				CMP	FOREST1+1
+				BNE	chktr2
+				STY	FOREST1+2			
+chktr2			
+				CMP	FOREST1+3
+				BNE	chktr3
+				STY	FOREST1+4			
+chktr3			
+				CMP	FOREST1+5
+				BNE	chktr4
+				STY	FOREST1+6			
+chktr4			
+				CMP	FOREST1+7
+				BNE	chktr5
+				STY	FOREST1+8			
+chktr5			
+				CMP	FOREST1+9
+				BNE	chktr6
+				STY	FOREST1+10			
+chktr6			
+				CMP	FOREST1+11
+				BNE	chktr7
+				STY	FOREST1+12			
+chktr7			
+				CMP	FOREST1+13
+				BNE	chktr8
+				STY	FOREST1+14			
+chktr8			
+				CMP	FOREST1+15
+				BNE	chktr9
+				STY	FOREST1+16
+							
+chktr9			
+
 				
 				LDX	#6
 				JSR	HCOLOR			; set HCOLOR=6
@@ -108,16 +147,16 @@ gotplus2		LSR
 				INC	DRPOS
 				LDA	DRPOS
 				BEQ	hillRTS	
-				TXA
-				PHA
-				TYA	
-				PHA
-				LDA	#100
+				;TXA
+				;PHA
+				;TYA	
+				;PHA
+				;LDA	#100
 				;JSR	WAIT
-				PLA	
-				TAY
-				PLA
-				TAX
+				;PLA	
+				;TAY
+				;PLA
+				;TAX
 				JMP	hllp
 hillRTS			RTS
 ;

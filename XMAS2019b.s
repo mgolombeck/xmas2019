@@ -153,6 +153,8 @@ XFROM			EQU	#$04
 XTO				EQU	#$25
 YFROM			EQU	#$16
 YTO				EQU	#$66
+SNOWLIM			EQU	#24
+LOGOLIM			EQU	#8
 
 * math zero page variables
 TXTPTR    		EQU $00      	; POINTER FOR TEXT OUTPUT
@@ -457,11 +459,11 @@ flglp2			STA	SNOWMOM,X		; set momentum of flake (= 2) for pure vertical movement
 *				
 *		
 HCLR
-				LDX #32				; delete HIRES 1
+				LDX #45				; delete SLED data area & HIRES 1
 				LDA #00
 				TAY
 				LDA	#$00
-HCLRlp			STA $2000,Y	
+HCLRlp			STA $1300,Y	
 				INY
 				BNE HCLRlp
 				INC HCLRlp+02
@@ -795,7 +797,7 @@ chkLIM			LDA	LIMIT			; check if number of flakes is limited
 				TAX
 				JMP	noInc3
 noLimFl			LDA	SNOWCNT+1
-				CMP #20				; 20 * 256 snowflakes drawn -> activate limit
+				CMP SNOWLIM				; SNOWLIM * 256 snowflakes drawn -> activate limit
 				BNE	noInc3
 				LDA	#1
 				STA	LIMIT
@@ -880,7 +882,7 @@ chkLOGO			LDA	SLEDACT
 				LDA	DSPLOGO
 				BNE	anRTS
 				LDA	SNOWCNT+1
-				CMP	#6			; when to show the LOGO?
+				CMP	LOGOLIM			; when to show the LOGO? LOGOLIM * 256 drawn flakes
 				BNE	anRTS
 				LDA	#1
 				STA DSPLOGO
