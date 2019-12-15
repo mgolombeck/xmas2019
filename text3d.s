@@ -42,6 +42,72 @@ WLCMTXT
 				LDA	#0					; yes -> reset counter
 				STA	STRCOUNT
 wlcmRTS			RTS
+;
+; print out HOHOHO
+;
+PRINTHO
+
+				LDY	#0
+				LDA	(PTEXT2),Y			; read X-position
+				STA	CHARCOUNT2
+				INY
+				LDA	(PTEXT2),Y			; read Y-position
+				STA	YLINENUM2
+				INY
+holp1			LDA	(PTEXT2),Y	
+				CMP	#$FF				; HOHOHO output done?
+				BEQ	HOrts
+          		LDX	#0
+          		STX	CPOSN2+1				; should be 0
+				STA	CPOSN2					; store next character value
+				ASL	CPOSN2
+				ASL	CPOSN2
+				ROL	CPOSN2+1
+				ASL CPOSN2
+				ROL	CPOSN2+1
+				
+										; get adress of chosen character
+				LDA	#<TCar			; in FONT table
+				CLC
+				ADC	CPOSN2
+				STA	CPOSN2
+				
+				LDA #>TCar
+				ADC	CPOSN2+1
+				STA	CPOSN2+1
+				
+				STY	YDUMMY4
+				
+GB				LDX	YLINENUM2			; y-line number
+				LDY	#$00					; loop over 8 Bytes
+G1				CLC							; get base adress of HIRES screen line
+				LDA	YLOOKLO,X			; 
+				ADC	CHARCOUNT2			; char counter
+				STA	CSCRN3					; LO-byte char HIRES adress
+				STA	CSCRN4
+				LDA	YLOOKHI,X			; 
+				ORA	#$20					; create adress for page 1
+				STA	CSCRN3+1
+				LDA	(CPOSN2),Y
+				STY YDUMMY3
+				LDY #0
+				STA	(CSCRN3),Y
+				LDY YDUMMY3
+*
+TOutDone		INX
+				INY
+				CPY	#$05					; plot all 4 bytes
+				BCC	G1						; loop!
+*						
+				LDY	YDUMMY4
+				INC	CHARCOUNT2			; next char position
+				INY
+				BNE	holp1				
+							
+HOrts			RTS
+YLINENUM2		DS		1
+YDUMMY3			DS		1
+YDUMMY4			DS		1
 *
 *
 * HIRES text output routine
@@ -282,11 +348,14 @@ STARTTEXT
           		STA $C054
           		JSR	$FB39			; command TEXT
 				JSR	HOME			; clear text screen
+				LDA	#0
+				STA	WAITVAL
 				LDA	#15				; HTAB 14
 				STA	$24
 				LDX	#<T_SHACK
 				LDY	#>T_SHACK
 				JSR	printCHAR
+				
 
 				LDA	#16
 				STA	$24
@@ -316,6 +385,8 @@ STARTTEXT
 				JSR	printCHAR
 							
 
+				LDA	#100
+				STA	WAITVAL
 				LDA	#11
 				STA	$24
 				LDA	#10
@@ -336,13 +407,49 @@ STARTTEXT
 				JSR	printCHAR
 				LDA	#$FF
 				STA	LIMIT			; unlimited flakes
-				JSR	RDKEY			; press a key
+getKY			JSR	RDKEY			; press a key
 				;always limit number of snowflakes!
-				;CMP	#$D9			; "Y"?
-				;BEQ	doLIMIT
-				;CMP	#$F9
-				;BNE	noLIMIT
-doLIMIT			INC	LIMIT			; limit number of snowflakes		
+				CMP	#$D9			; "Y"?
+				BNE	chkY
+				LDX	#<T_HERO	
+				LDY	#>T_HERO
+				LDA	#7
+				STA	$24
+				JMP	doLIMIT
+chkY			CMP	#$F9
+				BNE	chkN
+				LDX	#<T_HERO	
+				LDY	#>T_HERO
+				LDA	#7
+				STA	$24
+				JMP	doLIMIT
+				
+chkN			CMP	#$CE			; "N"?
+				BNE	chkn
+				LDX	#<T_WUZZ	
+				LDY	#>T_WUZZ
+				LDA	#0
+				STA	$24
+				JMP	doLIMIT
+				
+chkn			CMP	#$EE
+				BNE	getKY
+				LDX	#<T_WUZZ	
+				LDY	#>T_WUZZ
+				LDA	#0
+				STA	$24
+
+doLIMIT	
+				LDA	#10
+				STA	$25
+				JSR	VTAB
+				JSR	printCHAR
+				LDX	#20
+iniWT2			LDA	#255
+				JSR	WAIT
+				DEX
+				BNE	iniWT2
+				INC	LIMIT			; limit number of snowflakes		
 noLIMIT			RTS
 		
 ;
@@ -380,9 +487,9 @@ ENDTEXT
 				STA	VTAB2
 				LDX	#<T_END1
 				LDY	#>T_END1
-				LDA	#<T_END1a
+				LDA	#<T_END1b
 				STA	PTR
-				LDA	#>T_END1a
+				LDA	#>T_END1b
 				STA	PTR+1
 				JSR	printANIM
 							
@@ -420,6 +527,8 @@ ENDTEXT
 				STA	HTAB2
 				LDA	#16
 				STA	VTAB2
+				LDA	#20
+				STA	WAITVAL
 				LDX	#<T_END4
 				LDY	#>T_END4
 				LDA	#<T_END4a
@@ -427,7 +536,9 @@ ENDTEXT
 				LDA	#>T_END4a
 				STA	PTR+1
 				JSR	printANIM
-							
+				
+				LDA	#100
+				STA	WAITVAL			
 				LDA	#12
 				STA	HTAB
 				LDA	#31
@@ -441,9 +552,216 @@ ENDTEXT
 				LDA	#>T_END5a
 				STA	PTR+1
 				JSR	printANIM
-							
+
+				LDA	#70
+				STA	WAITVAL			
+				LDA	#12
+				STA	HTAB
+				LDA	#31
+				STA	HTAB2
+				LDA	#21
+				STA	VTAB2
+				LDX	#<T_MARQ
+				LDY	#>T_MARQ
+				LDA	#<T_MARQa
+				STA	PTR
+				LDA	#>T_MARQa
+				STA	PTR+1
+				JSR	printANIM
+
+				LDA	#12
+				STA	HTAB
+				LDA	#31
+				STA	HTAB2
+				LDA	#23
+				STA	VTAB2
+				LDX	#<T_MARQ
+				LDY	#>T_MARQ
+				LDA	#<T_MARQa
+				STA	PTR
+				LDA	#>T_MARQa
+				STA	PTR+1
+				JSR	printANIM
 				RTS
 
+;
+; Marquee setup
+;
+MARQUEESET		LDX	#21
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#13
+				LDA	#$A0
+				STA	(TXTPTR),Y
+				INY
+				STA	(TXTPTR),Y
+				
+				LDX	#23
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#27
+				LDA	#$A0
+				STA	(TXTPTR),Y
+				DEY
+				STA	(TXTPTR),Y
+				
+				LDA	#1
+				STA	MSTATE
+				STA	MCOUNT
+				DEC	MCOUNT
+				RTS
+				
+;
+; Marquee animation
+;
+MARQUEEANIM		
+				LDA	MSTATE
+				CMP #1
+				BNE Mstate2
+				;LDY	MCOUNT
+				LDX	#21
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDA	MCOUNT
+				CLC
+				ADC	#13
+				TAY
+				LDA	#$BA
+				STA	(TXTPTR),Y
+				INY	
+				INY
+				LDA	#$A0
+				STA	(TXTPTR),Y
+				LDX	#23
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDA	#27
+				SEC
+				SBC	MCOUNT
+				TAY
+				LDA	#$BA
+				STA	(TXTPTR),Y
+				DEY	
+				DEY
+				LDA	#$A0
+				STA	(TXTPTR),Y
+				
+				INC	MCOUNT
+				LDA	MCOUNT
+				CMP	#13				; all done?
+				BNE	Mstate1e
+				INC	MSTATE			; incement state
+				LDA	#0
+				STA	MCOUNT			; reset MCOUNT
+Mstate1e		JMP	MArts
+								
+Mstate2			CMP	#2
+				BNE	Mstate3
+				LDX	#21
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#26
+				LDA	#$BA
+				STA	(TXTPTR),Y
+				LDX	#22
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#27
+				LDA	#$A0
+				STA	(TXTPTR),Y
+				LDY	#13
+				STA	(TXTPTR),Y
+				LDX	#23
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#14
+				LDA	#$BA
+				STA	(TXTPTR),Y
+				INC	MSTATE
+				JMP MArts		
+
+Mstate3			CMP	#3
+				BNE	Mstate4
+				LDX	#21
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#27
+				LDA	#$BA
+				STA	(TXTPTR),Y
+				LDY	#13
+				LDA	#$A0
+				STA	(TXTPTR),Y
+				
+				LDX	#23
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#13
+				LDA	#$BA
+				STA	(TXTPTR),Y
+				LDY	#27
+				LDA	#$A0
+				STA	(TXTPTR),Y
+
+				INC	MSTATE
+				JMP MArts		
+
+Mstate4			CMP	#4
+				BNE	MArts
+				LDX	#21
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#14
+				LDA	#$A0
+				STA	(TXTPTR),Y
+				LDX	#22
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#27
+				LDA	#$BA
+				STA	(TXTPTR),Y
+				LDY	#13
+				STA	(TXTPTR),Y
+				LDX	#23
+				LDA	YTLOOKLO,X
+				STA	TXTPTR
+				LDA	YTLOOKHI,X
+				STA	TXTPTR+1
+				LDY	#26
+				LDA	#$A0
+				STA	(TXTPTR),Y
+				LDA	#1
+				STA	MSTATE
+				;JMP MArts		
+
+
+MArts			LDA	#120
+				JSR	WAIT
+				RTS
+MSTATE			DS	1				
+MCOUNT			DS	1
+				
 ;
 ; end scroller effect
 ;

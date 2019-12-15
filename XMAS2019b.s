@@ -96,10 +96,14 @@ VTAB2			EQU	$337
 OUTCHAR			EQU	$338
 HTAB2			EQU	$339
 OUTCHAR2		EQU	$33A
+HOHOSTATE		EQU	$33B
+CHARCOUNT2		EQU	$33C		; active char in the string being animated
+HOHOCOUNT		EQU	$33D		; active HOHOHO-cycles
+SLEDRDS			EQU	$33E		; how many times has the sled passed by?
 
 TOUTSCR				EQU	$350			; text output on which HIRES screens? 1, 2 or both?
-PT3_LOC 			EQU	$7100			; address of PT3-file 
-DUMP				EQU	$8900			; logo save space
+PT3_LOC 			EQU	$7300			; address of PT3-file 
+DUMP				EQU	$8B00			; logo save space
 *         
 bMB					EQU	$370			; MockingBoard available? ($00/No | $01 Yes)
 bMBSlot				EQU	$371			; slot of MockingBoard ($01..$07)
@@ -155,6 +159,7 @@ YFROM			EQU	#$16
 YTO				EQU	#$66
 SNOWLIM			EQU	#24
 LOGOLIM			EQU	#8
+HOHODUR			EQU	#35				; duration of HOHOHO on the screen
 
 * math zero page variables
 TXTPTR    		EQU $00      	; POINTER FOR TEXT OUTPUT
@@ -181,6 +186,7 @@ PTEXT			EQU	$20
 ANDMSK			EQU	$22			; pixel mask
 PSLED1			EQU	$23			; pointer to sled data
 PSLED2			EQU	$25
+PTEXT2			EQU	$27
 
 CPOSN			EQU	$40			; character output on HIRES-screen
 CSCRN			EQU	$42			; double usage of adresses
@@ -192,6 +198,9 @@ XOLD			EQU	$54
 YOLD			EQU	$55
 RND2			EQU	$56
 RND1			EQU	$57
+CPOSN2			EQU	$58			; character output on HIRES-screen
+CSCRN3			EQU	$5A			; double usage of adresses
+CSCRN4			EQU	$5C
 
 AY_REGISTERS		EQU $65
 A_FINE_TONE			EQU $65
@@ -233,6 +242,7 @@ INIT			JSR	DETECTA2			; get machine type
 				STA	WAITVAL
 
 				JSR	STARTTEXT
+				JSR	HOME
 				STA	$C057				; HIRES page 1 on
 				STA	$C054
 				STA	$C050
@@ -256,7 +266,6 @@ MAIN
 				STA	YOFF
 				JSR	DRAWHILL			; draw landscape
 				JSR DRAWTREE
-				
 				LDA	bMB					; check for mockingboard
 				BNE	INITMB				; no MockingBoard -> sorry, no sound!
 				JMP	noMB0				; and no scroll text!
@@ -266,16 +275,107 @@ INITMB			JSR	MOCK_INIT			; init MockingBoard
 				JSR	pt3_init_song		; init all variables needed for the player
 				CLI						; music
 noMB0				
-				LDA	#255
+				LDX	#20
+iniWT			LDA	#255
 				JSR	WAIT
-				LDA	#255
-				JSR	WAIT
+				DEX
+				BNE	iniWT
 				JSR	WLCMTXT
 				JSR	TXTOUT				; init text output
 				INC	TXTACT
 				LDA	#0					; reset XPOSH
 				STA	XPOSH
 anim	   		JSR	ANIMATE				; do one animation frame of the snowflakes
+				LDA	SLEDACT
+				BEQ	ct2	
+				JMP	initSNOW
+ct2				LDA	SLEDRDS				; how many sledrounds have been flown?
+				CMP	#3					
+				BEQ	doINT	
+				JMP initSNOW
+doINT			STA $C051      			; SWITCH TO TEXT -> end of program
+          		STA $C052
+          		STA $C054
+				SEI 
+          		JSR	CLEAR_LEFT			; mute MockingBoard
+				
+				LDA	#100
+				STA	WAITVAL
+				LDA	#12				; HTAB 14
+				STA	HTAB
+				LDA	#26
+				STA	HTAB2
+				LDA	#11
+				STA	VTAB2
+				LDX	#<T_INT1
+				LDY	#>T_INT1
+				LDA	#<T_INT1a
+				STA	PTR
+				LDA	#>T_INT1a
+				STA	PTR+1
+				JSR	printANIM
+
+				LDX	#20
+iniWT3			LDA	#255
+				JSR	WAIT
+				DEX
+				BNE	iniWT3
+
+				LDA	#100
+				STA	WAITVAL
+				LDA	#08				; HTAB 14
+				STA	HTAB
+				LDA	#30
+				STA	HTAB2
+				LDA	#11
+				STA	VTAB2
+				LDX	#<T_INT2
+				LDY	#>T_INT2
+				LDA	#<T_INT2a
+				STA	PTR
+				LDA	#>T_INT2a
+				STA	PTR+1
+				JSR	printANIM
+
+				LDX	#20
+iniWT4			LDA	#255
+				JSR	WAIT
+				DEX
+				BNE	iniWT4
+
+				LDA	#100
+				STA	WAITVAL
+				LDA	#02				; HTAB 14
+				STA	HTAB
+				LDA	#36
+				STA	HTAB2
+				LDA	#11
+				STA	VTAB2
+				LDX	#<T_INT3
+				LDY	#>T_INT3
+				LDA	#<T_INT3a
+				STA	PTR
+				LDA	#>T_INT3a
+				STA	PTR+1
+				JSR	printANIM
+
+				LDX	#20
+iniWT5			LDA	#255
+				JSR	WAIT
+				DEX
+				BNE	iniWT5
+
+				
+				JSR	PATCH1				; patch sled data
+				JSR	PATCH2
+				STA	$C057				; HIRES page 1 on
+				STA	$C054
+				STA	$C050
+				STA	$C052
+				
+				CLI
+				LDA	#$FF
+				STA	SLEDRDS
 initSNOW		LDA	SNOWINIT
 				BEQ	kpress
 				JSR	WAIT
@@ -284,8 +384,9 @@ initSNOW		LDA	SNOWINIT
 
 kpress			
 kpress1			LDA	KYBD
-				BPL	anim
-				BIT STROBE
+				BMI	evalK	
+				JMP anim
+evalK			BIT STROBE
 KEYQ      		CMP #$D1       			; KEY 'Q' IS PRESSED
           		BEQ END
 KEYP        	CMP	#$D0				; key "P" pressed?
@@ -297,18 +398,18 @@ KEYP        	CMP	#$D0				; key "P" pressed?
 				CLI						; enable interrupt
 noMB5    		JMP	anim
 KEYS			CMP	#$D3				; key 's' is pressed
-				BNE	anim				
-				LDA	SLEDACT
-				BNE stopSLED
-				INC SLEDACT
-				LDA	DSPLOGO				; logo is active plot the sled at 98
-				BNE	plot98
-				JSR	SETYSLED
-				JMP	anim			
-plot98			LDA	#98
-				STA	YSLED
-				JMP anim
-stopSLED		DEC	SLEDACT								
+				BNE	cont1				
+				;LDA	SLEDACT
+				;BNE stopSLED
+				;INC SLEDACT
+				;LDA	DSPLOGO				; if logo is active plot the sled at 98
+				;BNE	plot98
+				;JSR	SETYSLED
+				;JMP	anim			
+plot98			;LDA	#98
+				;STA	YSLED
+				;JMP anim
+stopSLED		;DEC	SLEDACT								
 cont1			JMP	anim
 *										
 END				LDA	STROBE
@@ -321,8 +422,10 @@ END				LDA	STROBE
 				JSR	TCLR
 				LDA	#150
 				STA	WAITVAL
-				JSR	ENDTEXT			
-kpress2			LDA	KYBD
+				JSR	ENDTEXT	
+				JSR	MARQUEESET		
+kpress2			JSR	MARQUEEANIM
+				LDA	KYBD
 				BPL	kpress2
 				BIT	STROBE
 				JSR	ENDSCROLL
@@ -337,10 +440,9 @@ kpress2			LDA	KYBD
 				JSR	VBLwait
 				JSR	TCLR
 				SEI
-          		;LDA	READROM				; language card off
           		JSR	CLEAR_LEFT			; mute MockingBoard
           		JSR	RESTzp				; get back original ZP values
-          		LDA	#22
+          		LDA	#0
           		STA	$25
           		JSR	VTAB
           		LDA	STROBE
@@ -356,66 +458,11 @@ _L1				CMP VERTBLANK      	; works with IIGS/IIE
 _L2       		CMP VERTBLANK  		; synchronizing counting algorithm      
          		BMI _L2            	; wait until the end of the complete display -> start of vertical blanking
 				RTS
+			
 ;
-; flip HIRES byte
+; setup algorithm
 ;
-FLIPBYTE
-				LDA	#0
-				STA	OUTBYTE				; reset out byte
-				LDA	#%00000001			; check for bit 0
-				BIT	INBYTE
-				BEQ	chkbit2
-				LDA	OUTBYTE
-				ORA	#%01000000
-				STA	OUTBYTE		
-chkbit2			LDA	#%00000010			; check for bit 0
-				BIT	INBYTE
-				BEQ	chkbit3
-				LDA	OUTBYTE
-				ORA	#%00100000
-				STA	OUTBYTE		
-chkbit3			LDA	#%00000100			; check for bit 0
-				BIT	INBYTE
-				BEQ	chkbit4
-				LDA	OUTBYTE
-				ORA	#%00010000
-				STA	OUTBYTE		
-chkbit4			LDA	#%00001000			; check for bit 0
-				BIT	INBYTE
-				BEQ	chkbit5
-				LDA	OUTBYTE
-				ORA	#%00001000
-				STA	OUTBYTE		
-chkbit5			LDA	#%00010000			; check for bit 0
-				BIT	INBYTE
-				BEQ	chkbit6
-				LDA	OUTBYTE
-				ORA	#%00000100
-				STA	OUTBYTE		
-chkbit6			LDA	#%00100000			; check for bit 0
-				BIT	INBYTE
-				BEQ	chkbit7
-				LDA	OUTBYTE
-				ORA	#%00000010
-				STA	OUTBYTE		
-chkbit7			LDA	#%01000000			; check for bit 0
-				BIT	INBYTE
-				BEQ	chkbite
-				LDA	OUTBYTE
-				ORA	#%00000001
-				STA	OUTBYTE		
-chkbite			RTS
-				
-				
-				
-
-*				
-*
-* setup algorithm
-*
-SETUP			LDA STROBE   	; delete keystrobe
-*
-*				
+SETUP			LDA STROBE   		; delete keystrobe
           		LDA	#$20
           		STA	G_PAGE
         		LDA	$4E				; get seed value
@@ -426,7 +473,7 @@ SETUP			LDA STROBE   	; delete keystrobe
           		LDA	#254
           		STA	SNOWINIT
 *
-				LDX	#0
+				LDX	#0				; init 0 values
 				STX	SNOWCNT
 				STX	SNOWCNT+1
 				STX	DSPLOGO
@@ -434,6 +481,7 @@ SETUP			LDA STROBE   	; delete keystrobe
 				STX	TXTWAIT
 				STX	STRCOUNT
 				STX	WAITVAL
+				STX	HOHOSTATE		; HOHOHO off
 				LDA	#123			; snowflake seed value
 xslp			JSR	RNDGEN			; init snowflakes value
 				STA	SNOWX,X
@@ -454,14 +502,13 @@ flglp			STA	SNOWFLAG,X		; set animation flag ($FF = no drawing)
 				LDA	#2
 flglp2			STA	SNOWMOM,X		; set momentum of flake (= 2) for pure vertical movement
 				INX
-				BNE flglp2
-				
+				BNE flglp2				
 *				
 *		
 HCLR
 				LDX #45				; delete SLED data area & HIRES 1
-				LDA #00
-				TAY
+				LDA #00				; if sled area is not cleared explicitly we get 
+				TAY					; weird results on some machines!
 				LDA	#$00
 HCLRlp			STA $1300,Y	
 				INY
@@ -469,8 +516,8 @@ HCLRlp			STA $1300,Y
 				INC HCLRlp+02
 				DEX
 				BNE HCLRlp	
-				;LDA	#$20
-				;STA	HCLRlp+02		
+				LDA	#$13			; enables algo restartability from monitor
+				STA	HCLRlp+02		
 
 * setup lookup-tables for fast shift
 * table 1: 2 x LSR of a byte
@@ -524,7 +571,7 @@ lpLUT4			TXA
 ;
 ; setup sled animation frames
 ;
-; shift right
+; shift sled frames to the right (7 frames altogether)
 ;
 				LDA	#0
 				STA	SLEDCNT
@@ -582,12 +629,15 @@ yindrts			INC	SLEDCNT				; all copies done?
 				LDA	SLEDCNT
 				CMP	NUMSLED
 				BNE sl3lp
-
+				
+				;JSR	PATCH1				; patch frame data for reindeer feet animation	
+				
+				
 ;
 ; shift left
 ;
-				JSR	INVERTSLED
-				LDA	#0
+ivsl			JSR	INVERTSLED			; invert sled frame #1 for left shift
+				LDA	#0					; shift inverted frame to the left 
 				STA	SLEDCNT
 sl3lpa			LDA	SLEDCNT
 				ASL
@@ -643,7 +693,10 @@ yindrtsa		INC	SLEDCNT				; all copies done?
 				CMP	NUMSLED
 				BNE sl3lpa
 				
-				LDA	#7					; re-init sled counter
+				;JSR	PATCH2
+				
+				
+ivsl2			LDA	#7					; re-init sled counter
 				STA	SLEDCNT
 				LDA	#98
 				STA	YSLED
@@ -653,6 +706,7 @@ yindrtsa		INC	SLEDCNT				; all copies done?
 				STA	SLEDFROM
 				STA	SLEDSTATE
 				STA	SLEDDIR				; first round to the right
+				STA	SLEDRDS				; set sled rounds to 0
 				LDA	#161
 				STA	SLEDACT
 				LDA	#8
@@ -710,7 +764,7 @@ YIND2			DS	1					; second index
 ; basic calculation routine
 ;
 ;
-; animation
+; animation master routine
 ;
 ANIMATE			LDX	SNOWINIT		; init counter for first snow flake
 dlp				LDA	SNOWX,X
@@ -787,7 +841,7 @@ resFlag			INC	SNOWCNT			; increment snow counter
 				BNE	chkLIM
 				INC	SNOWCNT+1
 				
-chkLIM			LDA	LIMIT			; check if number of flakes is limited
+chkLIM			LDA	LIMIT			; check if limit of flakes is reached
 				BMI	noInc3
 				BEQ	noLimFl		
 				TXA
@@ -797,12 +851,12 @@ chkLIM			LDA	LIMIT			; check if number of flakes is limited
 				TAX
 				JMP	noInc3
 noLimFl			LDA	SNOWCNT+1
-				CMP SNOWLIM				; SNOWLIM * 256 snowflakes drawn -> activate limit
+				CMP SNOWLIM			; SNOWLIM * 256 snowflakes drawn -> activate limit
 				BNE	noInc3
 				LDA	#1
 				STA	LIMIT
 noInc3				
-				LDA	#0
+				LDA	#0				; reset a snowflake when it has reached the ground
 				STA	SNOWY,X
 				STA	SNOWFLAG,X
 				LDA	#2
@@ -832,14 +886,14 @@ mvdLEFT			LDA	SNOWX,X
 				DEC	YPOS		; move directly to the left
 				JMP	doanim
 											
-mvRIGHT			LDA	SNOWX,X		; check if snow flake is at the left border
+mvRIGHT			LDA	SNOWX,X		; check if snow flake is at the right border
 				CLC
 				ADC	#1
 				STA	SNOWX,X
 				STA	XPOSL
 				JMP	doanim												
 								
-mvdRIGHT		LDA	SNOWX,X		; check if snow flake is at the left border
+mvdRIGHT		LDA	SNOWX,X		; check if snow flake is at the right border
 				CLC
 				ADC	#1
 				STA	SNOWX,X
@@ -852,7 +906,7 @@ doanim			LDA	YPOS
 				BMI	xlp			; do not draw snowflakes initially!
 				TXA
 				PHA
-				JSR	SETPIXEL	; delete and redraw
+				JSR	SETPIXEL	; fast delete and redraw
 				PLA
 				TAX
 
@@ -941,6 +995,7 @@ setylp			JSR	RNDGEN			; get a random y-position for the sled
 				CLC
 				ADC	#20
 				STA	YSLED
+				STA	HOHO+1			; set y-coordinate for HOHOHO
 				RTS
 
 ; 
@@ -1099,7 +1154,7 @@ SLEDANIM
 				CMP	#7
 				BLT	step1
 				CMP	#14
-				BLT	step2
+				BLT	js2
 				CMP	#21
 				BLT	js3
 				CMP	#28
@@ -1130,8 +1185,12 @@ SLEDANIM
 				LDA	#<SLEDADR2
 				STA	slaLO+1
 				STA	slaHI+1
-				RTS
+				LDA	SLEDRDS
+				BMI slanimrts		; still active?
+				INC	SLEDRDS			; increment round counter
+slanimrts		RTS
 				
+js2				JMP step2
 js3				JMP	step3
 js4				JMP	step4
 js5a			JMP	step5a	
@@ -1227,10 +1286,52 @@ slanrts			RTS
 ; move sled from right to left 
 ;
 SLEDANIM2
+				LDA	HOHOSTATE
+				BNE	slan1			; do not print HOHOHO if already printed in this round
+				LDA	DSPLOGO
+				BNE	slan1			; do not display HOHOHO when logo is shown!
 				LDA	SLEDSTATE
+				CMP	#100
+				BGE	slan1
+				LDA	PRNG
+				JSR	RNDGEN
+				AND	#%00000111
+				CMP	#%00000111
+				BNE	slan1
+				INC	HOHOSTATE
+				LDA	HOHODUR
+				STA	HOHOCOUNT
+				LDA	XSLED
+				CLC
+				ADC #1
+				STA	HOHOseq
+				STA	HOHOdelseq
+				LDA	YSLED
+				SEC	
+				SBC	#8
+				STA	HOHOseq+1
+				STA	HOHOdelseq+1
+				LDA	#<HOHOseq
+				STA	PTEXT2
+				LDA	#>HOHOseq
+				STA	PTEXT2+1
+
+				JSR	PRINTHO
+				
+slan1			DEC	HOHOCOUNT
+				LDA	HOHOCOUNT
+				BNE	slan1a				; check if HOHOHO should be removed!
+				LDA	DSPLOGO
+				BNE	slan1a
+				LDA	#<HOHOdelseq		; delete HOHOHO
+				STA	PTEXT2
+				LDA	#>HOHOdelseq
+				STA	PTEXT2+1
+				JSR	PRINTHO
+slan1a			LDA	SLEDSTATE
 				CMP	#154
-				BEQ	step2ba
-				BGE	step1b
+				BEQ	js2ba
+				BGE	js1b
 				CMP	#147
 				BEQ	js3ba
 				BGE	js2b
@@ -1250,18 +1351,32 @@ SLEDANIM2
 				BGE	js9b
 e1				LDA	#0
 				STA	SLEDSTATE
-				LDA	#0
+				LDA	HOHOSTATE			; check if HOHOHO was printed
+				BEQ	e2
+				LDA	#<HOHOdelseq		; delete HOHOHO if not already deleted
+				STA	PTEXT2
+				LDA	#>HOHOdelseq
+				STA	PTEXT2+1
+				JSR	PRINTHO
+				
+e2				LDA	#0
+				STA	HOHOSTATE			; reset HOHOHO-counter for next round
 				STA	SLEDCNT
-				STA	SLEDACT			; deactivate sled after one round
-				INC	SLEDDIR			; fly to the right
+				STA	SLEDACT				; deactivate sled after one round
+				INC	SLEDDIR				; fly to the right
 				LDA	#>SLEDADR			; set the bitmap adress in draw routine
 				STA	slaHI+2
 				STA	slaLO+2
 				LDA	#<SLEDADR
 				STA	slaLO+1
 				STA	slaHI+1
-				RTS
+				LDA	SLEDRDS
+				BMI slanim2rts
+				INC	SLEDRDS			; increment round counter
+slanim2rts		RTS
 
+js1b			JMP	step1b
+js2ba			JMP	step2ba
 js2b			JMP	step2b
 js3ba			JMP	step3ba		
 js3b			JMP	step3b		
@@ -1557,7 +1672,7 @@ Y2					DS	1
 ; text strings
 ;
 		
-NUMSTRS			EQU	#23					; number of strings to display
+NUMSTRS			EQU	#26					; number of strings to display
 STRADR	
 				DFB #<STR1,#>STR1,#<STR2,#>STR2,#<STR3,#>STR3
 				DFB #<STR4,#>STR4,#<STR5,#>STR5,#<STR6,#>STR6
@@ -1567,7 +1682,7 @@ STRADR
 				DFB #<STR16,#>STR16,#<STR17,#>STR17,#<STR18,#>STR18
 				DFB #<STR19,#>STR19,#<STR20,#>STR20,#<STR21,#>STR21
 				DFB #<STR22,#>STR22,#<STR23,#>STR23,#<STR24,#>STR24
-				
+				DFB #<STR25,#>STR25,#<STR26,#>STR26,#<STR27,#>STR27
 
 NUMSLED			EQU	#6				
 SLEDADR			DFB	#<SLED1,#>SLED1,#<SLED2,#>SLED2,#<SLED3,#>SLED3
@@ -1606,70 +1721,87 @@ STR7
 		ASC	'Music: Cj Splinter'
 		HEX	FF
 STR8
+		HEX	01B6
+		ASC	'Additional Animation: Dr. N. H. Cham'
+		HEX	FF
+STR9		
 		HEX	0EB6
 		ASC	'Greetings:'
 		HEX	FF
-STR9
+STR10
 		HEX	0DB6
 		ASC	'BrutalDeluxe'
 		HEX	FF
-STR10	
+STR11	
 		HEX	10B6
 		ASC	'Deater'
 		HEX	FF
-STR11	
+STR12	
 		HEX	10B6
 		ASC	'digarok'
 		HEX	FF
-STR12	
+STR13	
 		HEX	0EB6
 		ASC	'fenarinarsa'
 		HEX	FF
-STR13	
+STR14	
 		HEX	0DB6
 		ASC	'French Touch'
 		HEX	FF
-STR14	
+STR15	
 		HEX	0FB6
 		ASC	'Jackasser'
 		HEX	FF
-STR15	
+STR16	
 		HEX	0EB6
 		ASC	'Ninjaforce'
 		HEX	FF
-STR16
+STR17
 		HEX	01B6
 		ASC	'Visit www.golombeck.eu for more info!'
 		HEX	FF
-STR17
+STR18
 		HEX	02B6
 		ASC	'And yes - this demo uses AppleSoft!'
 		HEX	FF
-STR18
+STR19
+		HEX	04B6
+		ASC	'Sorry - no cycle counting here!'
+		HEX	FF
+STR20
+		HEX	04B6
+		ASC	'And also no mixed video modes!'
+		HEX	FF
+STR21
+		HEX	05B6
+		ASC	'Just Santa with his sled...'
+		HEX	FF
+STR22
+		HEX	04B6
+		ASC	'And lots of pseudo randomness!'
+		HEX	FF
+STR23
 		HEX	04B6
 		ASC	'Special thx to Dr. N. H. Cham!'
 		HEX	FF
-STR19		
+STR24		
 		HEX	05B6
 		ASC	'Press <Q> to quit this demo!'
 		HEX	FF
-STR20		
+STR25		
 		HEX	01B6
 		ASC	'That is all folks! See you next year!'
 		HEX	FF
-STR21		
+STR26		
 		HEX	12B6
 		ASC	'...'
 		HEX	FF
-STR22		
-		HEX	00B6
-		ASC	'This line was intentionally left blank'
+
+STR27		
+HOHO	
+		HEX	0532
+		ASC	'HO-HO-HO!'
 		HEX	FF
-STR23		
-		HEX	12B6
-		ASC	'...'
-		HEX	FF
-STR24		
 
 ;		DS	\ 
 SLED1
@@ -1687,9 +1819,12 @@ SLED1
 		DFB	%00000000,%11010111,%10001111,%10000000,%10000000,%11010101,%10000010,%10000000,%10000000
 		DFB	%00000000,%11010111,%11111010,%10000011,%10100000,%11010101,%10000000,%10000000,%10000000
 		DFB	%00000000,%11011100,%10101010,%10001111,%10100000,%11010001,%10000010,%10000000,%10000000
-		DFB	%00000000,%11111100,%11111111,%10110011,%10001000,%10000000,%10001000,%10000000,%10000000
-		DFB	%00000000,%10110000,%11100000,%10110000,%10000010,%10000000,%10000010,%10000000,%10000000
-		DFB	%00000000,%11111111,%11111111,%10001111,%10000000,%11000000,%10000000,%10000000,%10000000
+		DFB	%00000000,%11111100,%11111111,%10110011,%10001000,%11000000,%10000000,%10000000,%10000000
+		DFB	%00000000,%10110000,%11100000,%10110000,%10101000,%11000000,%10000000,%10000000,%10000000
+		DFB	%00000000,%11111111,%11111111,%10001111,%10000000,%10010000,%10000000,%10000000,%10000000
+;		DFB	%00000000,%11111100,%11111111,%10110011,%10001000,%10000000,%10001000,%10000000,%10000000
+;		DFB	%00000000,%10110000,%11100000,%10110000,%10000010,%10000000,%10000010,%10000000,%10000000
+;		DFB	%00000000,%11111111,%11111111,%10001111,%10000000,%11000000,%10000000,%10000000,%10000000
 ;
 ; data tables
 ;

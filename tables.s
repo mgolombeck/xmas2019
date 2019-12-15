@@ -234,11 +234,16 @@ FOREST1		DFB	8					; number of trees in the forest
 			DFB	161,139
 			DFB	179,148
 			DFB	197,147
-
+			
+			;DS	\ 
 T_SHACK		ASC "8-Bit-Shack"
 T_SHACKa	HEX	00
 T_SELECT	ASC	"Enable all features (Y/N)? "
 			HEX	00	
+T_HERO		ASC	"  Alright - let's rock!!!  "		
+			HEX	00
+T_WUZZ		ASC	"Are you scared? You'll get all features!"
+			HEX	00				
 T_LOAD		ASC	"Loading demo data..."
 			HEX	00		
 T_OPT1		ASC	"Options:"
@@ -248,15 +253,25 @@ T_OPT2		ASC	"<P>: Pause/Resume Music"
 T_OPT3		ASC	"<Q>: Quit XMAS-Demo"
 			HEX	00
 T_END1		ASC	"XMAS-Demo  2019"
-T_END1a		HEX	00	
+T_END1b		HEX	00	
 T_END2		ASC	"Code & Gfx:  SingleMalt"
 T_END2a		HEX	00	
 T_END3		ASC	"Music:  Cj Splinter"
 T_END3a		HEX	00	
 T_END4		ASC	"Merry Christmas & a Happy New Year 2020! "
 T_END4a		HEX	00	
-T_END5		ASC	" Press a key..."
+T_END5		ASC	": Press a key :"
 T_END5a		HEX	00	
+T_MARQ		ASC	":::::::::::::::"
+T_MARQa		HEX	00
+	DS	\ 
+T_INT1		ASC	"Wait a second!!"
+T_INT1a		HEX	00
+T_INT2		ASC	"Why is Santa so static?"
+T_INT2a		HEX	00
+T_INT3		ASC	"Ooops! We forgot to animate Santa!!"
+T_INT3a		HEX	00
+			
 								
 			;DS	\
 ;
@@ -295,3 +310,23 @@ FONTTAB
  HEX 000063636B6B3E000000331E0C1E330000003333333E301E
  HEX 00003F180C063F00F098989C9898F0801818181818181818
  HEX 0E18183818180E0000000000000000000000000000000000
+
+HOHOseq
+			HEX	0000
+			HEX	010200010200010203FF		; HO HO HO!
+HOHOdelseq
+			HEX	0000	
+			HEX	000000000000000000FF		; unwrite HOHOHO
+		
+TCar			
+		; Space ($00)
+		DFB $00,$00,$00,$00,$00,$00,$00,$00
+		; H ($08)
+		DFB $33,$33,$3F,$33,$33,$00,$00,$00
+		; O ($0F)
+		DFB $1E,$33,$33,$33,$1E,$00,$00,$00
+		; ! ($1E)
+		DFB $0C,$0C,$0C,$00,$0C,$00,$00,$00
+
+
+
