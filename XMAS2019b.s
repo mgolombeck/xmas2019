@@ -399,17 +399,13 @@ KEYP        	CMP	#$D0				; key "P" pressed?
 noMB5    		JMP	anim
 KEYS			CMP	#$D3				; key 's' is pressed
 				BNE	cont1				
-				;LDA	SLEDACT
-				;BNE stopSLED
-				;INC SLEDACT
-				;LDA	DSPLOGO				; if logo is active plot the sled at 98
-				;BNE	plot98
-				;JSR	SETYSLED
-				;JMP	anim			
-plot98			;LDA	#98
-				;STA	YSLED
-				;JMP anim
-stopSLED		;DEC	SLEDACT								
+				LDA	LIMIT
+				BMI setLIMIT
+				LDA	#$FF
+				STA	LIMIT				; deactivate LIMITed snowfall
+				JMP anim
+setLIMIT		LDA	#1					; activate LIMITed snowfall
+				STA	LIMIT								
 cont1			JMP	anim
 *										
 END				LDA	STROBE
@@ -431,13 +427,13 @@ kpress2			JSR	MARQUEEANIM
 				JSR	ENDSCROLL
 				LDA	#$20
 				STA	tByte+1
-				JSR	VBLwait
+				;JSR	VBLwait
 				JSR	TCLR
 				LDA	#240
 				JSR	WAIT
 				LDA	#$A0
 				STA	tByte+1
-				JSR	VBLwait
+				;JSR	VBLwait
 				JSR	TCLR
 				SEI
           		JSR	CLEAR_LEFT			; mute MockingBoard
@@ -472,6 +468,20 @@ SETUP			LDA STROBE   		; delete keystrobe
           		STA	PRNG			; random gen seed value
           		LDA	#254
           		STA	SNOWINIT
+*
+COPYROM			LDY	#$F8			; copy Monitor-ROM to Language Card
+				STY	$3D
+				STY	$43
+				LDY	#$FF
+				STY	$3E
+				STY	$3F
+				INY
+				STY	$3C
+				STY	$42
+				LDA	WRITERAM	; toggle Language Card RAM for writing
+				LDA	WRITERAM
+				JSR	MEMCOPY
+				LDA	READROM		; toggle Language Card off
 *
 				LDX	#0				; init 0 values
 				STX	SNOWCNT
@@ -1542,7 +1552,10 @@ ylp2			LDA YLOOKLO,X		; get base adress
           		STA HBASL+1
 						
 				LDY	XFROM
-xlp2			LDA	(PTR)
+xlp2			STY	YDUMMY
+				LDY	#0
+				LDA	(PTR),Y
+				LDY	YDUMMY
 				CMP	#$80
 				BNE	res1
 				AND	#%01111111
@@ -1608,7 +1621,8 @@ ba2					LDA $1000,X
 					AND	charFLAG		; lowercase conversion if necessary
 					STA	OUTCHAR
 doANIMchar			DEC	PTR
-					LDA	(PTR)
+					LDY	#0
+					LDA	(PTR),Y
 					STA	OUTCHAR2
 					CMP #$E1			; "a" char in lower case range?
 					BCC	doANIMchar2		; no -> direct output
@@ -1672,7 +1686,7 @@ Y2					DS	1
 ; text strings
 ;
 		
-NUMSTRS			EQU	#26					; number of strings to display
+NUMSTRS			EQU	#25					; number of strings to display
 STRADR	
 				DFB #<STR1,#>STR1,#<STR2,#>STR2,#<STR3,#>STR3
 				DFB #<STR4,#>STR4,#<STR5,#>STR5,#<STR6,#>STR6
@@ -1681,7 +1695,8 @@ STRADR
 				DFB #<STR13,#>STR13,#<STR14,#>STR14,#<STR15,#>STR15
 				DFB #<STR16,#>STR16,#<STR17,#>STR17,#<STR18,#>STR18
 				DFB #<STR19,#>STR19,#<STR20,#>STR20,#<STR21,#>STR21
-				DFB #<STR22,#>STR22,#<STR23,#>STR23,#<STR24,#>STR24
+				DFB #<STR22,#>STR22 ;#<STR23,#>STR23,
+				DFB	#<STR24,#>STR24
 				DFB #<STR25,#>STR25,#<STR26,#>STR26,#<STR27,#>STR27
 
 NUMSLED			EQU	#6				
@@ -1781,9 +1796,9 @@ STR22
 		ASC	'And lots of pseudo randomness!'
 		HEX	FF
 STR23
-		HEX	04B6
-		ASC	'Special thx to Dr. N. H. Cham!'
-		HEX	FF
+		;HEX	04B6
+		;ASC	'Special thx to Dr. N. H. Cham!'
+		;HEX	FF
 STR24		
 		HEX	05B6
 		ASC	'Press <Q> to quit this demo!'
